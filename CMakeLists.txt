@@ -37,8 +37,28 @@ target_include_directories(imgui PUBLIC external/imgui)
 
 set(TRASHMAGIC_SRC
     src/main.cpp
+    src/Window.cpp
+    src/Renderer.cpp
+    src/Shader.cpp
+    src/Cube.cpp
+    src/Scene.cpp
+    src/Transform.cpp
+    src/Camera.cpp
+    src/LightSource.cpp
+    src/LightGlowRenderer.cpp
+    src/Gui.cpp
+    src/Texture.cpp
+    src/Cubemap.cpp
+    src/SkyboxRenderer.cpp
+    src/InputEventSystem.cpp
+    src/Sphere.cpp
+    src/Pyramid.cpp
 )
 
 add_executable(TrashMagic-Sandbox ${TRASHMAGIC_SRC})
 target_include_directories(TrashMagic-Sandbox PRIVATE include)
-target_link_libraries(TrashMagic-Sandbox PRIVATE glfw glm::glm OpenGL::GL glad)
+target_compile_definitions(TrashMagic-Sandbox PRIVATE
+    TRASHMAGIC_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/shaders"
+    TRASHMAGIC_TEXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/textures"
+)
+target_link_libraries(TrashMagic-Sandbox PRIVATE glfw glm::glm OpenGL::GL glad imgui)
