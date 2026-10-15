@@ -57,11 +57,94 @@ glm::mat4 Camera::projectionMatrix(float aspectRatio) const
     {
         throw std::invalid_argument("Camera aspect ratio must be greater than zero.");
     }
-    return glm::perspective(
-        glm::radians(m_verticalFieldOfViewDegrees),
-        aspectRatio,
-        m_nearPlane,
-        m_farPlane);
+    if (m_projectionMode == ProjectionMode::Orthographic)
+    {
+        const float halfHeight = m_orthographicHeight * 0.5f;
+        const float halfWidth = halfHeight * aspectRatio;
+        return glm::ortho(
+            -halfWidth,
+            halfWidth,
+            -halfHeight,
+            halfHeight,
+            m_nearPlane,
+            m_farPlane);
+    }
+    return glm::perspective(glm::radians(m_verticalFieldOfViewDegrees), aspectRatio, m_nearPlane, m_farPlane);
+}
+
+void Camera::setProjectionMode(ProjectionMode mode)
+{
+    if (m_destroyed)
+    {
+        throw std::logic_error("Cannot modify a destroyed camera.");
+    }
+    if (mode != ProjectionMode::Perspective && mode != ProjectionMode::Orthographic)
+    {
+        throw std::invalid_argument("Unsupported camera projection mode.");
+    }
+    m_projectionMode = mode;
+}
+
+Camera::ProjectionMode Camera::projectionMode() const
+{
+    return m_projectionMode;
+}
+
+void Camera::setFieldOfViewDegrees(float fieldOfViewDegrees)
+{
+    if (m_destroyed)
+    {
+        throw std::logic_error("Cannot modify a destroyed camera.");
+    }
+    if (!std::isfinite(fieldOfViewDegrees) || fieldOfViewDegrees <= 0.0f
+        || fieldOfViewDegrees >= 180.0f)
+    {
+        throw std::invalid_argument("Camera field of view must be between zero and 180 degrees.");
+    }
+    m_verticalFieldOfViewDegrees = fieldOfViewDegrees;
+}
+
+void Camera::setOrthographicHeight(float height)
+{
+    if (m_destroyed)
+    {
+        throw std::logic_error("Cannot modify a destroyed camera.");
+    }
+    if (!std::isfinite(height) || height <= 0.0f)
+    {
+        throw std::invalid_argument("Orthographic camera height must be finite and greater than zero.");
+    }
+    m_orthographicHeight = height;
+}
+
+float Camera::orthographicHeight() const
+{
+    return m_orthographicHeight;
+}
+
+void Camera::setClipPlanes(float nearPlane, float farPlane)
+{
+    if (m_destroyed)
+    {
+        throw std::logic_error("Cannot modify a destroyed camera.");
+    }
+    if (!std::isfinite(nearPlane) || !std::isfinite(farPlane)
+        || nearPlane <= 0.0f || farPlane <= nearPlane)
+    {
+        throw std::invalid_argument("Camera clip planes must satisfy 0 < near < far.");
+    }
+    m_nearPlane = nearPlane;
+    m_farPlane = farPlane;
+}
+
+float Camera::nearPlane() const
+{
+    return m_nearPlane;
+}
+
+float Camera::farPlane() const
+{
+    return m_farPlane;
 }
 
 void Camera::update(const Window& window, float deltaSeconds, bool controlsEnabled)
@@ -138,10 +221,20 @@ void Camera::update(const Window& window, float deltaSeconds, bool controlsEnabl
     const double scrollDelta = window.consumeScrollDelta();
     if (controlsEnabled)
     {
-        m_verticalFieldOfViewDegrees = glm::clamp(
-            m_verticalFieldOfViewDegrees - static_cast<float>(scrollDelta) * 2.0f,
-            20.0f,
-            80.0f);
+        if (m_projectionMode == ProjectionMode::Perspective)
+        {
+            m_verticalFieldOfViewDegrees = glm::clamp(
+                m_verticalFieldOfViewDegrees - static_cast<float>(scrollDelta) * 2.0f,
+                20.0f,
+                80.0f);
+        }
+        else
+        {
+            m_orthographicHeight = glm::clamp(
+                m_orthographicHeight - static_cast<float>(scrollDelta) * 0.5f,
+                0.5f,
+                200.0f);
+        }
     }
 }
 
@@ -166,6 +259,11 @@ void Camera::setMouseSensitivity(float sensitivity)
 const glm::vec3& Camera::position() const
 {
     return m_position;
+}
+
+const glm::vec3& Camera::forward() const
+{
+    return m_forward;
 }
 
 float Camera::fieldOfViewDegrees() const

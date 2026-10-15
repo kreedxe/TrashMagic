@@ -5,6 +5,7 @@
 #include "Gui.hpp"
 #include "InputEventSystem.hpp"
 #include "LightSource.hpp"
+#include "Physics.hpp"
 #include "Pyramid.hpp"
 #include "Renderer.hpp"
 #include "Scene.hpp"
@@ -31,6 +32,7 @@ int main()
         window.setVSync(true);
         InputEventSystem inputEvents(window);
         Renderer renderer(window);
+        Physics physics;
         Gui gui(window, renderer);
         inputEvents.setModeChangedCallback([&gui](InputMode mode)
         {
@@ -57,7 +59,7 @@ int main()
         sphere.setTexture(prickTexture);
         pyramid.setTexture(plankTexture);
 
-        Camera camera(glm::vec3(0.0f, 1.0f, 8.0f), glm::vec3(0.0f));
+        Camera camera(glm::vec3(0.0f, 4.0f, 14.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         LightSource warmLight(glm::vec3(1.0f, 0.48f, 0.22f), 1.1f);
         LightSource coolLight(glm::vec3(0.25f, 0.55f, 1.0f), 1.1f);
         LightSource pinkLight(glm::vec3(1.0f, 0.2f, 0.55f), 0.8f);
@@ -71,57 +73,62 @@ int main()
         scene.lighting().sunColor = glm::vec3(1.0f, 0.84f, 0.66f);
         scene.lighting().sunIntensity = 0.45f;
 
+        Transform groundTransform;
+        groundTransform.position = glm::vec3(0.0f, -1.0f, 0.0f);
+        groundTransform.scale = glm::vec3(12.0f, 0.5f, 8.0f);
+        scene.bindCube(
+            cubeD,
+            cubeShader,
+            groundTransform,
+            PhysicsBody{},
+            "Ground");
+
         Transform cubeATransform;
-        cubeATransform.position = glm::vec3(-1.8f, 0.0f, 0.0f);
-        cubeATransform.scale = glm::vec3(1.2f);
-        cubeATransform.rotation = glm::vec3(0.25f, 0.35f, 0.0f);
-        cubeATransform.angularVelocity = glm::vec3(0.25f, 0.45f, 0.1f);
-        scene.bindCube(cubeA, cubeShader, cubeATransform);
+        cubeATransform.position = glm::vec3(-2.0f, 3.0f, 0.0f);
+        cubeATransform.scale = glm::vec3(1.0f);
+        auto cubeABody = PhysicsBody::dynamic(1.2f);
+        cubeABody.restitution = 0.12f;
+        scene.bindCube(cubeA, cubeShader, cubeATransform, cubeABody, "Falling cube A");
 
         Transform cubeBTransform;
-        cubeBTransform.position = glm::vec3(1.8f, 0.0f, 0.0f);
-        cubeBTransform.scale = glm::vec3(1.1f);
-        cubeBTransform.rotation = glm::vec3(-0.2f, 0.4f, 0.15f);
-        cubeBTransform.angularVelocity = glm::vec3(-0.35f, 0.55f, 0.2f);
-        scene.bindCube(cubeB, cubeShader, cubeBTransform);
+        cubeBTransform.position = glm::vec3(0.0f, 6.5f, 0.0f);
+        cubeBTransform.scale = glm::vec3(0.9f);
+        auto cubeBBody = PhysicsBody::dynamic(0.9f);
+        cubeBBody.angularVelocity = glm::vec3(0.3f, 0.8f, 0.1f);
+        scene.bindCube(cubeB, cubeShader, cubeBTransform, cubeBBody, "Falling cube B");
 
         Transform cubeCTransform;
-        cubeCTransform.position = glm::vec3(0.0f, 1.85f, -1.4f);
-        cubeCTransform.scale = glm::vec3(0.75f);
-        cubeCTransform.angularVelocity = glm::vec3(0.5f, -0.3f, 0.35f);
-        scene.bindCube(cubeC, cubeShader, cubeCTransform);
-
-        Transform cubeDTransform;
-        cubeDTransform.position = glm::vec3(0.0f, -1.8f, 0.4f);
-        cubeDTransform.scale = glm::vec3(0.8f);
-        cubeDTransform.rotation = glm::vec3(0.2f, 0.0f, 0.3f);
-        cubeDTransform.angularVelocity = glm::vec3(-0.3f, 0.25f, -0.4f);
-        scene.bindCube(cubeD, cubeShader, cubeDTransform);
+        cubeCTransform.position = glm::vec3(2.0f, 4.5f, 0.0f);
+        cubeCTransform.scale = glm::vec3(0.8f);
+        auto cubeCBody = PhysicsBody::dynamic(0.8f);
+        cubeCBody.restitution = 0.2f;
+        scene.bindCube(cubeC, cubeShader, cubeCTransform, cubeCBody, "Falling cube C");
 
         Transform sphereTransform;
-        sphereTransform.position = glm::vec3(-3.2f, 0.0f, -1.0f);
-        sphereTransform.scale = glm::vec3(0.85f);
-        sphereTransform.angularVelocity = glm::vec3(0.0f, 0.35f, 0.0f);
-        scene.bindSphere(sphere, cubeShader, sphereTransform);
+        sphereTransform.position = glm::vec3(-1.0f, 8.0f, 1.2f);
+        sphereTransform.scale = glm::vec3(0.65f);
+        auto sphereBody = PhysicsBody::dynamic(0.7f, PhysicsCollider::Sphere);
+        sphereBody.restitution = 0.35f;
+        scene.bindSphere(sphere, cubeShader, sphereTransform, sphereBody, "Bouncing sphere");
 
         Transform pyramidTransform;
-        pyramidTransform.position = glm::vec3(3.2f, 0.0f, -1.0f);
-        pyramidTransform.scale = glm::vec3(1.0f);
-        pyramidTransform.rotation = glm::vec3(0.0f, 0.4f, 0.0f);
-        pyramidTransform.angularVelocity = glm::vec3(0.2f, -0.3f, 0.0f);
-        scene.bindPyramid(pyramid, cubeShader, pyramidTransform);
+        pyramidTransform.position = glm::vec3(1.4f, 7.5f, -1.3f);
+        pyramidTransform.scale = glm::vec3(0.85f);
+        auto pyramidBody = PhysicsBody::dynamic(1.0f);
+        pyramidBody.angularVelocity = glm::vec3(0.0f, 0.4f, 0.0f);
+        scene.bindPyramid(pyramid, cubeShader, pyramidTransform, pyramidBody, "Falling pyramid");
 
         Transform keyLightTransform;
         keyLightTransform.position = glm::vec3(-3.0f, 3.0f, 3.0f);
-        scene.bindLight(warmLight, keyLightTransform);
+        scene.bindLight(warmLight, keyLightTransform, "Warm key light");
 
         Transform fillLightTransform;
         fillLightTransform.position = glm::vec3(3.0f, 1.5f, 1.0f);
-        scene.bindLight(coolLight, fillLightTransform);
+        scene.bindLight(coolLight, fillLightTransform, "Cool fill light");
 
         Transform pinkLightTransform;
         pinkLightTransform.position = glm::vec3(0.0f, -2.0f, 2.5f);
-        scene.bindLight(pinkLight, pinkLightTransform);
+        scene.bindLight(pinkLight, pinkLightTransform, "Pink accent light");
 
         using Clock = std::chrono::steady_clock;
         constexpr auto frameDuration = std::chrono::duration_cast<Clock::duration>(
@@ -139,15 +146,20 @@ int main()
                 frameStart - previousFrameTime).count();
             previousFrameTime = frameStart;
             camera.update(window, deltaSeconds, inputEvents.cameraControlsActive());
+            physics.step(scene, deltaSeconds);
             renderer.render(scene);
             smoothedDeltaSeconds +=
                 (deltaSeconds - smoothedDeltaSeconds) * (1.0f - std::exp(-deltaSeconds * 5.0f));
             gui.beginFrame();
-            gui.drawDebugOverlay(
+            gui.drawEditor(
                 1.0f / smoothedDeltaSeconds,
                 smoothedDeltaSeconds * 1000.0f,
                 camera,
-                scene);
+                scene,
+                cubeA,
+                sphere,
+                pyramid,
+                cubeShader);
             gui.endFrame();
             window.swapBuffers();
 
@@ -163,7 +175,9 @@ int main()
             }
         }
 
+        physics.removeScene(scene);
         scene.destroy();
+        physics.destroy();
         warmLight.destroy();
         coolLight.destroy();
         pinkLight.destroy();

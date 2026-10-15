@@ -3,6 +3,7 @@
 #include "Shader.hpp"
 
 #include <glad/glad.h>
+#include <glm/common.hpp>
 
 #include <memory>
 #include <stdexcept>
@@ -80,7 +81,7 @@ void LightGlowRenderer::render(
         m_shader->setVec3("uPosition", light.position);
         m_shader->setVec3("uColor", light.color);
         m_shader->setFloat("uIntensity", light.intensity);
-        m_shader->setFloat("uRadius", 0.45f + 0.2f * light.intensity);
+        m_shader->setFloat("uRadius", glm::clamp(light.radius * 0.08f, 0.35f, 1.5f));
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
     glBindVertexArray(0);

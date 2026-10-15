@@ -8,14 +8,27 @@
 class Window;
 class Scene;
 class SkyboxRenderer;
+class ShadowMapRenderer;
 class LightGlowRenderer;
 class Cube;
 class Shader;
 
+enum class RendererDrawMode
+{
+    Solid,
+    Wireframe,
+    Points
+};
+
 struct RendererSettings
 {
     glm::vec4 clearColor{0.08f, 0.08f, 0.1f, 1.0f};
+    RendererDrawMode drawMode = RendererDrawMode::Solid;
     bool depthTesting = true;
+    bool shadowsEnabled = true;
+    bool skyboxEnabled = true;
+    bool lightMarkersEnabled = true;
+    bool lightGlowsEnabled = true;
 };
 
 class Renderer
@@ -28,6 +41,7 @@ public:
     Renderer& operator=(const Renderer&) = delete;
 
     void setSettings(const RendererSettings& settings);
+    const RendererSettings& settings() const;
     void render(const Scene& scene) const;
     void destroy();
     bool isDestroyed() const;
@@ -36,6 +50,7 @@ private:
     Window& m_window;
     RendererSettings m_settings;
     std::unique_ptr<SkyboxRenderer> m_skyboxRenderer;
+    std::unique_ptr<ShadowMapRenderer> m_shadowMapRenderer;
     std::unique_ptr<LightGlowRenderer> m_lightGlowRenderer;
     std::unique_ptr<Cube> m_lightMarkerCube;
     std::unique_ptr<Shader> m_lightMarkerShader;

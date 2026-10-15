@@ -8,6 +8,7 @@
 #include "Shader.hpp"
 #include "Sphere.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 
 Scene::~Scene()
@@ -64,7 +65,30 @@ const SceneLighting& Scene::lighting() const
     return m_lighting;
 }
 
-unsigned int Scene::bindCube(Cube& cube, Shader& shader, const Transform& transform)
+ScenePhysicsSettings& Scene::physicsSettings()
+{
+    if (m_destroyed)
+    {
+        throw std::logic_error("Cannot access a destroyed scene.");
+    }
+    return m_physicsSettings;
+}
+
+const ScenePhysicsSettings& Scene::physicsSettings() const
+{
+    if (m_destroyed)
+    {
+        throw std::logic_error("Cannot access a destroyed scene.");
+    }
+    return m_physicsSettings;
+}
+
+unsigned int Scene::bindCube(
+    Cube& cube,
+    Shader& shader,
+    const Transform& transform,
+    std::optional<PhysicsBody> physicsBody,
+    const std::string& name)
 {
     if (m_destroyed)
     {
@@ -76,11 +100,18 @@ unsigned int Scene::bindCube(Cube& cube, Shader& shader, const Transform& transf
     }
 
     const unsigned int id = m_nextEntityId++;
-    m_entities.push_back(Entity{id, transform, &cube, &shader, nullptr, nullptr, nullptr});
+    m_entities.push_back(
+        Entity{id, transform, &cube, &shader, nullptr, nullptr, nullptr, physicsBody,
+            name.empty() ? "Cube " + std::to_string(id) : name});
     return id;
 }
 
-unsigned int Scene::bindSphere(Sphere& sphere, Shader& shader, const Transform& transform)
+unsigned int Scene::bindSphere(
+    Sphere& sphere,
+    Shader& shader,
+    const Transform& transform,
+    std::optional<PhysicsBody> physicsBody,
+    const std::string& name)
 {
     if (m_destroyed)
     {
@@ -92,11 +123,18 @@ unsigned int Scene::bindSphere(Sphere& sphere, Shader& shader, const Transform& 
     }
 
     const unsigned int id = m_nextEntityId++;
-    m_entities.push_back(Entity{id, transform, nullptr, &shader, nullptr, &sphere, nullptr});
+    m_entities.push_back(
+        Entity{id, transform, nullptr, &shader, nullptr, &sphere, nullptr, physicsBody,
+            name.empty() ? "Sphere " + std::to_string(id) : name});
     return id;
 }
 
-unsigned int Scene::bindPyramid(Pyramid& pyramid, Shader& shader, const Transform& transform)
+unsigned int Scene::bindPyramid(
+    Pyramid& pyramid,
+    Shader& shader,
+    const Transform& transform,
+    std::optional<PhysicsBody> physicsBody,
+    const std::string& name)
 {
     if (m_destroyed)
     {
@@ -108,11 +146,16 @@ unsigned int Scene::bindPyramid(Pyramid& pyramid, Shader& shader, const Transfor
     }
 
     const unsigned int id = m_nextEntityId++;
-    m_entities.push_back(Entity{id, transform, nullptr, &shader, nullptr, nullptr, &pyramid});
+    m_entities.push_back(
+        Entity{id, transform, nullptr, &shader, nullptr, nullptr, &pyramid, physicsBody,
+            name.empty() ? "Pyramid " + std::to_string(id) : name});
     return id;
 }
 
-unsigned int Scene::bindLight(LightSource& light, const Transform& transform)
+unsigned int Scene::bindLight(
+    LightSource& light,
+    const Transform& transform,
+    const std::string& name)
 {
     if (m_destroyed)
     {
@@ -137,7 +180,30 @@ unsigned int Scene::bindLight(LightSource& light, const Transform& transform)
     }
 
     const unsigned int id = m_nextEntityId++;
-    m_entities.push_back(Entity{id, transform, nullptr, nullptr, &light, nullptr, nullptr});
+    m_entities.push_back(
+        Entity{id, transform, nullptr, nullptr, &light, nullptr, nullptr, std::nullopt,
+            name.empty() ? "Light " + std::to_string(id) : name});
+    return id;
+}
+
+unsigned int Scene::createPointLight(
+    const glm::vec3& color,
+    float intensity,
+    float radius,
+    const Transform& transform,
+    const std::string& name)
+{
+    auto light = std::make_unique<LightSource>(color, intensity, radius);
+    const unsigned int id = bindLight(*light, transform, name);
+    try
+    {
+        m_ownedLights.emplace(id, std::move(light));
+    }
+    catch (...)
+    {
+        removeEntity(id);
+        throw;
+    }
     return id;
 }
 
@@ -159,9 +225,53 @@ const std::vector<Scene::Entity>& Scene::entities() const
     return m_entities;
 }
 
+std::vector<Scene::Entity>& Scene::entities()
+{
+    if (m_destroyed)
+    {
+        throw std::logic_error("Cannot access a destroyed scene.");
+    }
+    return m_entities;
+}
+
+bool Scene::removeEntity(unsigned int id)
+{
+    if (m_destroyed)
+    {
+        throw std::logic_error("Cannot modify a destroyed scene.");
+    }
+
+    const auto found = std::find_if(
+        m_entities.begin(),
+        m_entities.end(),
+        [id](const Entity& entity)
+        {
+            return entity.id == id;
+        });
+    if (found == m_entities.end())
+    {
+        return false;
+    }
+
+    const auto ownedLight = m_ownedLights.find(id);
+    if (ownedLight != m_ownedLights.end())
+    {
+        ownedLight->second->destroy();
+        m_ownedLights.erase(ownedLight);
+    }
+    m_entities.erase(found);
+    return true;
+}
+
 void Scene::destroy()
 {
     m_entities.clear();
+    for (auto& [id, light] : m_ownedLights)
+    {
+        static_cast<void>(id);
+        light->destroy();
+    }
+    m_ownedLights.clear();
     m_camera = nullptr;
     m_cubemap = nullptr;
     m_destroyed = true;

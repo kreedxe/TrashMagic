@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 4.1)
 project(TrashMagic)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 
 #------------------------| OPENGL & GLFW & GLM |------------------------#
 
@@ -33,6 +36,11 @@ target_link_libraries(imgui PUBLIC glfw)
 target_include_directories(imgui PUBLIC external/imgui)
 
 
+#------------------------| JOLT PHYSICS |------------------------#
+
+add_subdirectory(external/JoltPhysics/Build)
+
+
 #------------------------| TRASH MAGIC SANDBOX |------------------------#
 
 set(TRASHMAGIC_SRC
@@ -45,7 +53,9 @@ set(TRASHMAGIC_SRC
     src/Transform.cpp
     src/Camera.cpp
     src/LightSource.cpp
+    src/Physics.cpp
     src/LightGlowRenderer.cpp
+    src/ShadowMapRenderer.cpp
     src/Gui.cpp
     src/Texture.cpp
     src/Cubemap.cpp
@@ -60,5 +70,6 @@ target_include_directories(TrashMagic-Sandbox PRIVATE include)
 target_compile_definitions(TrashMagic-Sandbox PRIVATE
     TRASHMAGIC_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/shaders"
     TRASHMAGIC_TEXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/textures"
+    TRASHMAGIC_FONT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/misc/fonts/Roboto-Medium.ttf"
 )
-target_link_libraries(TrashMagic-Sandbox PRIVATE glfw glm::glm OpenGL::GL glad imgui)
+target_link_libraries(TrashMagic-Sandbox PRIVATE glfw glm::glm OpenGL::GL glad imgui Jolt)
